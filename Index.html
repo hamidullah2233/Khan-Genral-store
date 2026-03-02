@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Khan General Store</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; }
+  h1 { text-align: center; }
+  .container { display: flex; gap: 50px; }
+  .admin, .customer { flex: 1; border: 1px solid #ccc; padding: 20px; border-radius: 10px; }
+  input, button { margin: 5px; padding: 5px; }
+  button { cursor: pointer; }
+  .product { border-bottom: 1px solid #ccc; margin-bottom: 10px; padding-bottom: 10px; }
+</style>
+</head>
+<body>
+<h1>Khan General Store</h1>
+<div class="container">
+  <!-- Admin Panel -->
+  <div class="admin">
+    <h2>Admin Panel</h2>
+    <input type="text" id="name" placeholder="Product Name">
+    <input type="number" id="price" placeholder="Price">
+    <input type="number" id="stock" placeholder="Stock">
+    <button id="addProduct">Add Product</button>
+    <div id="adminProducts"></div>
+  </div>
+
+  <!-- Customer View -->
+  <div class="customer">
+    <h2>Customer View</h2>
+    <div id="products"></div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+import { getDatabase, ref, get, set, update, remove } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-database.js";
+
+// Firebase Configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyC1URodSVd-bdJOx-RMVV8Gx8qEtNwkPLI",
+  authDomain: "khan-general-store.firebaseapp.com",
+  databaseURL: "https://khan-general-store-default-rtdb.firebaseio.com",
+  projectId: "khan-general-store",
+  storageBucket: "khan-general-store.firebasestorage.app",
+  messagingSenderId: "968470474012",
+  appId: "1:968470474012:web:1e2afbd4e513e5c4c4ded9"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const productsRef = ref(db, 'products');
+
+const adminProductsDiv = document.getElementById('adminProducts');
+const productsDiv = document.getElementById('products');
+
+// Add Product (Admin)
+document.getElementById('addProduct').addEventListener('click', ()=>{
+  const name = document.getElementById('name').value;
+  const price = Number(document.getElementById('price').value);
+  const stock = Number(document.getElementById('stock').value);
+  if(!name || price<=0 || stock<0){ alert("Enter valid product data"); return; }
+  const key = name.toLowerCase().replace(/\s/g,'_');
+  set(ref(db, 'products/' + key), {name, price, stock});
+  alert("Product added!");
+  location.reload();
+});
+
+// Display Admin Products
+get(productsRef).then(snapshot=>{
+  const data = snapshot.val();
+  if(data){
+    for(let key in data){
+      const p = data[key];
+      const div = document.createElement('div');
+      div.className = "product";
+      div.innerHTML = `
+        <h4>${p.name}</h4>
+        <p>Price: ${p.price} PKR</p>
+        <p>Stock: ${p.stock}</p>
+        <button onclick="deleteProduct('${key}')">Delete</button>
+        <button onclick="increaseStock('${key}')">+ Stock</button>
+      `;
+      adminProductsDiv.appendChild(div);
+    }
+  }
+});
+
+// Admin Functions
+window.deleteProduct = function(key){
+  remove(ref(db,'products/'+key));
+  alert("Deleted!");
+  location.reload();
+}
+window.increaseStock = function(key){
+  get(ref(db,'products/'+key)).then(snap=>{
+    const current = snap.val().stock;
+    update(ref(db,'products/'+key),{stock: current + 10});
+    alert("Stock increased by 10");
+    location.reload();
+  });
+}
+
+// Display Customer Products
+get(productsRef).then(snapshot => {
+  const data = snapshot.val();
+  if(data){
+    for(let key in data){
+      const product = data[key];
+      const div = document.createElement('div');
+      div.className = "product";
+      div.innerHTML = `
+        <h4>${product.name}</h4>
+        <p>Price: ${product.price} PKR</p>
+        <p>Stock: ${product.stock}</p>
+        <button onclick="buyProduct('${key}', ${product.stock})">Buy</button>
+      `;
+      productsDiv.appendChild(div);
+    }
+  }
+});
+
+// Customer Buy Function
+window.buyProduct = function(key, stock){
+  if(stock <= 0){
+    alert("Out of stock!");
+    return;
+  }
+  const newStock = stock - 1;
+  update(ref(db, 'products/' + key), { stock: newStock });
+  alert("Product added to cart! Contact via WhatsApp to confirm order.");
+  location.reload();
+}
+</script>
+</body>
+      </html>
